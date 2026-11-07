@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aplikasi Absensi Karyawan</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        /* Custom Scrollbar for the table */
+        .table-container::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        .table-container::-webkit-scrollbar-track {
+            background: #f1f1f1; 
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1; 
+            border-radius: 4px;
+        }
+        .table-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8; 
+        }
+        
+        /* Toast Animation */
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @keyframes slideOut {
+            from { transform: translateX(0); opacity: 1; }
+            to { transform: translateX(100%); opacity: 0; }
+        }
+        .toast-enter { animation: slideIn 0.3s ease-out forwards; }
+        .toast-exit { animation: slideOut 0.3s ease-in forwards; }
+    </style>
+</head>
+<body class="text-gray-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed top-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <!-- Header -->
+    <header class="bg-blue-600 text-white shadow-md">
+        <div class="max-w-6xl mx-auto px-4 py-4 flex justify-between items-center">
+            <div class="flex items-center gap-2">
+                <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <h1 class="text-2xl font-bold tracking-tight">HadirKu</h1>
+            </div>
+            <p class="text-sm font-medium opacity-80 hidden sm:block">Sistem Absensi Karyawan</p>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="flex-grow w-full max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- Left Column: Clock & Actions -->
+        <div class="lg:col-span-1 flex flex-col gap-6">
+            
+            <!-- Clock Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 flex flex-col items-center text-center">
+                <p id="current-date" class="text-gray-500 font-medium mb-2">Memuat tanggal...</p>
+                <h2 id="current-time" class="text-5xl font-bold text-gray-800 tracking-tighter tabular-nums">00:00:00</h2>
+                <div class="mt-4 px-3 py-1 bg-green-100 text-green-700 rounded-full text-xs font-semibold uppercase tracking-wide">
+                    Sistem Aktif
+                </div>
+            </div>
+
+            <!-- Input Form Card -->
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                <h3 class="text-lg font-semibold mb-4 text-gray-800 border-b pb-2">Panel Absensi</h3>
+                
+                <div class="mb-4">
+                    <label for="employee-name" class="block text-sm font-medium text-gray-700 mb-1">Nama Karyawan</label>
+                    <input type="text" id="employee-name" placeholder="Masukkan nama Anda" 
+                        class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                </div>
+
+                <!-- Geolocation Toggle (Visual only for this demo) -->
+                <div class="flex items-center gap-2 mb-6">
+                    <input type="checkbox" id="use-location" class="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500" checked>
+                    <label for="use-location" class="text-sm text-gray-600">Sertakan Lokasi (GPS)</label>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="handleCheckIn()" class="flex flex-col items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 text-white py-3 px-4 rounded-xl transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                        </svg>
+                        <span class="font-semibold text-sm">Absen Masuk</span>
+                    </button>
+                    <button onclick="handleCheckOut()" class="flex flex-col items-center justify-center gap-2 bg-orange-500 hover:bg-orange-600 text-white py-3 px-4 rounded-xl transition-colors shadow-sm focus:ring-2 focus:ring-offset-2 focus:ring-orange-500">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                        </svg>
+                        <span class="font-semibold text-sm">Absen Pulang</span>
+                    </button>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Right Column: History -->
+        <div class="lg:col-span-2">
+            <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 h-full flex flex-col">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 class="text-lg font-semibold text-gray-800">Riwayat Absensi (Hari Ini)</h3>
+                    <button onclick="clearHistory()" class="text-sm text-red-500 hover:text-red-700 font-medium transition-colors">
+                        Bersihkan Riwayat
+                    </button>
+                </div>
+                
+                <div class="table-container overflow-x-auto flex-grow">
+                    <table class="w-full text-left border-collapse whitespace-nowrap">
+                        <thead>
+                            <tr class="bg-gray-50 text-gray-600 text-sm border-y border-gray-200">
+                                <th class="px-4 py-3 font-semibold">Nama</th>
+                                <th class="px-4 py-3 font-semibold">Masuk</th>
+                                <th class="px-4 py-3 font-semibold">Pulang</th>
+                                <th class="px-4 py-3 font-semibold">Lokasi</th>
+                                <th class="px-4 py-3 font-semibold">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-table-body" class="divide-y divide-gray-100">
+                            <!-- Rows will be injected here via JS -->
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center">
+                    <svg class="w-16 h-16 text-gray-300 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4"></path>
+                    </svg>
+                    <p class="text-gray-500 font-medium">Belum ada riwayat absensi hari ini.</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="bg-white border-t border-gray-200 mt-auto">
+        <div class="max-w-6xl mx-auto px-4 py-4 text-center text-sm text-gray-500">
+            &copy; 2026 HadirKu. All rights reserved.
+        </div>
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // --- State Management ---
+        let attendanceData = JSON.parse(localStorage.getItem('hadirku_data')) || [];
+
+        // --- Clock Logic ---
+        function updateClock() {
+            const now = new Date();
+            
+            // Format Time
+            const timeOptions = { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false };
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('id-ID', timeOptions);
+            
+            // Format Date
+            const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            document.getElementById('current-date').textContent = now.toLocaleDateString('id-ID', dateOptions);
+        }
+        
+        setInterval(updateClock, 1000);
+        updateClock(); // Initial call
+
+        // --- Notification Logic (Replaces alert) ---
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            // Styling based on type
+            let bgColor = 'bg-blue-600';
+            let icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            
+            if (type === 'success') {
+                bgColor = 'bg-green-600';
+                icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>`;
+            } else if (type === 'error') {
+                bgColor = 'bg-red-600';
+                icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`;
+            } else if (type === 'warning') {
+                bgColor = 'bg-yellow-500';
+                icon = `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`;
+            }
+
+            toast.className = `flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-white text-sm font-medium ${bgColor} toast-enter`;
+            toast.innerHTML = `
+                ${icon}
+                <span>${message}</span>
+            `;
+            
+            container.appendChild(toast);
+
+            // Remove toast after 3.5 seconds
+            setTimeout(() => {
+                toast.classList.remove('toast-enter');
+                toast.classList.add('toast-exit');
+                setTimeout(() => toast.remove(), 300); // Wait for exit animation
+            }, 3500);
+        }
+
+        // --- Geolocation Logic ---
+        function getLocation() {
+            return new Promise((resolve) => {
+                const useLocation = document.getElementById('use-location').checked;
+                if (!useLocation) {
+                    resolve("Lokasi tidak disertakan");
+                    return;
+                }
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                            resolve(`${position.coords.latitude.toFixed(4)}, ${position.coords.longitude.toFixed(4)}`);
+                        },
+                        (error) => {
+                            console.warn("Geolocation error:", error);
+                            resolve("Izin lokasi ditolak/Gagal");
+                        },
+                        { timeout: 5000 } // Don't wait forever
+                    );
+                } else {
+                    resolve("GPS tidak didukung");
+                }
+            });
+        }
+
+        // --- Attendance Logic ---
+        function getTodayDateString() {
+            const now = new Date();
+            return now.toLocaleDateString('id-ID'); // e.g., 7/11/2026
+        }
+
+        function getTimeString() {
+            const now = new Date();
+            return now.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        async function handleCheckIn() {
+            const nameInput = document.getElementById('employee-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showToast('Silakan masukkan nama Anda terlebih dahulu.', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            const today = getTodayDateString();
+            
+            // Check if already checked in but hasn't checked out today
+            const existingSession = attendanceData.find(record => record.name.toLowerCase() === name.toLowerCase() && record.date === today && !record.checkOut);
+            
+            if (existingSession) {
+                showToast(`Anda sudah absen masuk pada ${existingSession.checkIn}. Silakan absen pulang.`, 'warning');
+                return;
+            }
+
+            // Get Location (Simulated Wait)
+            const btn = document.querySelector('button[onclick="handleCheckIn()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="font-semibold text-sm">Memproses...</span>`;
+            
+            const location = await getLocation();
+
+            const newRecord = {
+                id: Date.now(),
+                name: name,
+                date: today,
+                checkIn: getTimeString(),
+                checkOut: null,
+                location: location
+            };
+
+            attendanceData.push(newRecord);
+            saveData();
+            renderTable();
+            
+            nameInput.value = ''; // Clear input
+            btn.innerHTML = originalText; // Reset button
+            
+            showToast(`Absen masuk berhasil untuk ${name}`, 'success');
+        }
+
+        async function handleCheckOut() {
+            const nameInput = document.getElementById('employee-name');
+            const name = nameInput.value.trim();
+
+            if (!name) {
+                showToast('Silakan masukkan nama Anda terlebih dahulu.', 'error');
+                nameInput.focus();
+                return;
+            }
+
+            const today = getTodayDateString();
+            
+            // Find active session for today
+            const sessionIndex = attendanceData.findIndex(record => record.name.toLowerCase() === name.toLowerCase() && record.date === today && !record.checkOut);
+            
+            if (sessionIndex === -1) {
+                showToast('Tidak ada data absen masuk yang aktif untuk nama ini hari ini.', 'error');
+                return;
+            }
+
+            const btn = document.querySelector('button[onclick="handleCheckOut()"]');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = `<svg class="animate-spin w-6 h-6 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg><span class="font-semibold text-sm">Memproses...</span>`;
+
+            // We could optionally update location on checkout, but for simplicity we keep the check-in location
+            // or we append it. Let's just update the checkout time.
+            
+            attendanceData[sessionIndex].checkOut = getTimeString();
+            saveData();
+            renderTable();
+            
+            nameInput.value = ''; // Clear input
+            btn.innerHTML = originalText;
+
+            showToast(`Absen pulang berhasil untuk ${name}`, 'success');
+        }
+
+        // --- Data Persistence & UI Rendering ---
+        function saveData() {
+            localStorage.setItem('hadirku_data', JSON.stringify(attendanceData));
+        }
+
+        function clearHistory() {
+            if(attendanceData.length === 0) {
+                showToast('Riwayat sudah kosong.', 'info');
+                return;
+            }
+            attendanceData = [];
+            saveData();
+            renderTable();
+            showToast('Riwayat absensi berhasil dibersihkan.', 'success');
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('history-table-body');
+            const emptyState = document.getElementById('empty-state');
+            const today = getTodayDateString();
+            
+            // Filter to show only today's records for a cleaner UI (Optional, but good for daily use)
+            const todaysRecords = attendanceData.filter(record => record.date === today);
+
+            tbody.innerHTML = '';
+
+            if (todaysRecords.length === 0) {
+                emptyState.style.display = 'flex';
+                tbody.parentElement.classList.add('hidden'); // Hide table header if empty
+            } else {
+                emptyState.style.display = 'none';
+                tbody.parentElement.classList.remove('hidden');
+
+                // Sort by latest first
+                [...todaysRecords].reverse().forEach(record => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-gray-50 transition-colors';
+                    
+                    const statusBadge = record.checkOut 
+                        ? `<span class="px-2 py-1 bg-green-100 text-green-700 text-xs rounded-md font-medium">Selesai</span>`
+                        : `<span class="px-2 py-1 bg-blue-100 text-blue-700 text-xs rounded-md font-medium">Bekerja</span>`;
+
+                    tr.innerHTML = `
+                        <td class="px-4 py-3 text-sm font-medium text-gray-800">${record.name}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${record.checkIn}</td>
+                        <td class="px-4 py-3 text-sm text-gray-600">${record.checkOut || '-'}</td>
+                        <td class="px-4 py-3 text-xs text-gray-500 max-w-[150px] truncate" title="${record.location}">${record.location}</td>
+                        <td class="px-4 py-3">${statusBadge}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+        }
+
+        // Initialize Table
+        renderTable();
+
+    </script>
+</body>
+</html>
